@@ -48,7 +48,8 @@ fi
 
 COMMIT="$(git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
 DIRTY=""
-if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
+# results/ is left out: an earlier run's file does not change what is measured.
+if [[ -n "$(git status --porcelain -- . ':!results' 2>/dev/null)" ]]; then
     DIRTY="-dirty"
 fi
 NAME="$(date -u +%Y-%m-%d)-${COMMIT}${DIRTY}"
@@ -84,7 +85,8 @@ cargo bench --no-run "${PATCH[@]}" >/dev/null
 
 for b in b1_build b2_encode b3_dkim b4_send; do
     taskset -c "$CORES" cargo bench "${PATCH[@]}" --bench "$b" -- "${CRITERION_ARGS[@]}" 2>&1 \
-        | grep -E '^(b[1-4]_|[a-z].*/)|time:|thrpt:' | grep -v '^Benchmarking' >> "$OUT"
+        | grep -E '^(b[1-4]_|[a-z].*/)|time:|thrpt:' | grep -v '^Benchmarking' \
+        | grep -v '%' >> "$OUT" # not criterion's comparison with an earlier run
 done
 
 {
