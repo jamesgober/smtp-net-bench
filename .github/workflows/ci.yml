@@ -1,0 +1,37 @@
+name: CI
+
+# Benchmarks are not run in CI: shared runners are too noisy for numbers
+# worth keeping. CI proves that the harness builds, is lint-clean, and that
+# every competitor setup still does the same work as smtp-net
+# (tests/equivalence.rs).
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  build:
+    name: Build, lint, equivalence (ubuntu-latest / stable)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+      - name: Equivalence tests
+        run: cargo test --locked
+      - name: Build the benches
+        run: cargo bench --locked --no-run

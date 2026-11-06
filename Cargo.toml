@@ -1,0 +1,92 @@
+# =============================================================================
+#  smtp-net-bench
+# =============================================================================
+#
+# Competitor benchmarks for smtp-net (dev/PLAN.md section 11.1 of smtp-net,
+# decision D-035): message building and serialization, the transfer
+# encoders, DKIM signing, and sending over loopback, against lettre,
+# mail-builder, mail-send, and mail-auth.
+#
+# This repository exists so that smtp-net itself never depends on its
+# competitors, tokio, or their dependency trees. Those crates are allowed
+# here and only here. smtp-net is taken from crates.io, never by path: each
+# repository is checked out on its own in CI.
+[package]
+name    = "smtp-net-bench"
+version = "0.1.0"
+publish = false
+
+# Minimum Supported Rust Version (MSRV)
+rust-version = "1.98"
+edition = "2024"
+
+# License
+license = "MIT OR Apache-2.0"
+
+# Readme
+readme = "README.md"
+
+# Description
+description = "Independent, reproducible benchmarks of smtp-net against lettre, mail-builder, mail-send, and mail-auth on identical inputs."
+
+# Authors
+authors = ["James Gober <me@jamesgober.com>"]
+
+
+# DEPENDENCIES
+# #################################
+# The shared harness in src/ (inputs, the competitor message builders, the
+# send drivers) is used by both the benches and tests/equivalence.rs, so the
+# competitors are ordinary dependencies of this unpublished crate.
+[dependencies]
+# The test server is smtp-net's own TestServer (feature `testing`): every
+# client sends to the same server, which records what it received.
+smtp-net     = { version = "0.6", features = ["testing", "dkim"] }
+# Builder, blocking SMTP transport, DKIM; no TLS (loopback plaintext only).
+lettre       = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "pool", "dkim"] }
+mail-builder = "2"
+mail-send    = { version = "0.7", default-features = false, features = ["builder", "aws_lc_rs"] }
+# lettre takes its Ed25519 DKIM key as base64; also the base64 reference.
+base64       = "0.22"
+mail-auth    = "0.15"
+tokio        = { version = "1", features = ["rt", "net", "io-util"] }
+
+
+# DEV DEPENDENCIES
+# #################################
+[dev-dependencies]
+# Reference encoders and decoders for the encoder benches and checks
+# (quoted_printable is the crate lettre uses).
+quoted_printable = "0.5"
+criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+
+
+# BENCHMARKS
+# #################################
+[[bench]]
+name    = "b1_build"
+harness = false
+
+[[bench]]
+name    = "b2_encode"
+harness = false
+
+[[bench]]
+name    = "b3_dkim"
+harness = false
+
+[[bench]]
+name    = "b4_send"
+harness = false
+
+
+# PROFILES
+# #################################
+[profile.release]
+opt-level     = 3
+lto           = "fat"
+codegen-units = 1
+debug         = false
+
+[profile.bench]
+inherits = "release"
