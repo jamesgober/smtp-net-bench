@@ -71,9 +71,12 @@ cargo bench --no-run "${PATCH[@]}" >/dev/null
     echo "- Rust: $(rustc --version)"
     echo "- smtp-net: $SOURCE"
     echo "- Competitors (Cargo.lock):"
+    # The direct dependencies only: `cargo tree -i` fails when a crate is in
+    # the tree at more than one version (base64 is).
+    DIRECT="$(cargo tree --depth 1 --prefix none -e normal,dev "${PATCH[@]}" 2>/dev/null || true)"
     for c in lettre mail-builder mail-send mail-auth base64 quoted_printable; do
-        v="$(cargo tree -i "$c" --depth 0 "${PATCH[@]}" 2>/dev/null | head -1 | awk '{print $2}')"
-        echo "  - $c $v"
+        v="$(awk -v n="$c" '$1 == n { print $2; exit }' <<<"$DIRECT")"
+        echo "  - $c ${v:-unknown}"
     done
     echo
     echo '```'
